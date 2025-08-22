@@ -11,6 +11,75 @@ import uuid
 mongo = PyMongo()
 bcrypt = Bcrypt()
 
+class RegisteredTenantModel:
+    """Model for handling registered tenants by admin"""
+    
+    @staticmethod
+    def create_registered_tenant(email, password,name,admin_user_id):
+        """Create a new registered tenant"""
+        # Check if tenant already exists
+        if RegisteredTenantModel.get_tenant_by_email(email):
+            return None
+        
+        # Hash password
+        hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
+        
+        # Generate unique tenant ID
+        tenant_id = str(ObjectId())
+        
+        tenant_data = {
+            'name' : name,
+            'email': email.lower(),
+            'password': hashed_password,
+            'tenant_id': tenant_id,
+            'created_by': ObjectId(admin_user_id),
+            'status': 'active',
+            'created_at': datetime.utcnow(),
+            'updated_at': datetime.utcnow()
+        }
+        
+        result = mongo.db.registered_tenants.insert_one(tenant_data)
+        return {
+            'id': str(result.inserted_id),
+            'tenant_id': tenant_id,
+            'email': email
+        }
+    
+    @staticmethod
+    def get_tenant_by_email(email):
+        """Get registered tenant by email"""
+        return mongo.db.registered_tenants.find_one({'email': email.lower()})
+    
+    @staticmethod
+    def get_tenant_by_tenant_id(tenant_id):
+        """Get registered tenant by tenant_id"""
+        return mongo.db.registered_tenants.find_one({'tenant_id': tenant_id})
+    
+    @staticmethod
+    def get_tenants_by_admin(admin_user_id, skip=0, limit=10):
+        """Get all registered tenants created by admin"""
+        try:
+            tenants = list(mongo.db.registered_tenants.find(
+                {'created_by': ObjectId(admin_user_id)}
+            ).skip(skip).limit(limit).sort('created_at', -1))
+            
+            # Convert ObjectIds to strings
+            for tenant in tenants:
+                tenant['_id'] = str(tenant['_id'])
+                tenant['created_by'] = str(tenant['created_by'])
+            
+            return tenants
+        except:
+            return []
+    
+    @staticmethod
+    def verify_tenant_credentials(tenant_id, password):
+        """Verify tenant credentials"""
+        tenant = RegisteredTenantModel.get_tenant_by_tenant_id(tenant_id)
+        if not tenant:
+            return False
+        return bcrypt.check_password_hash(tenant['password'], password)
+
 class TenantModel:
     """Model for handling tenant operations"""
     

@@ -15,6 +15,7 @@ from routes.lead_routes import lead_bp
 from routes.appointment_routes import appointment_bp
 from routes.recording_routes import recording_bp
 from routes.knowledge_routes import knowledge_bp
+from routes.register_tenants import register_tenants_bp
 from flask_mail import Mail 
 mail = Mail()
 
@@ -47,6 +48,7 @@ def create_app(config_name=None):
     app.register_blueprint(appointment_bp)
     app.register_blueprint(recording_bp)
     app.register_blueprint(knowledge_bp)
+    app.register_blueprint(register_tenants_bp)
     
     # Setup logging
     setup_logging(app)
