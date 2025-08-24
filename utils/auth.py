@@ -26,6 +26,7 @@ class AuthUtils:
             algorithm=current_app.config['JWT_ALGORITHM']
         )
     
+
     @staticmethod
     def decode_token(token):
         """Decode JWT token"""
@@ -40,7 +41,12 @@ class AuthUtils:
             return None
         except jwt.InvalidTokenError:
             return None
-    
+    @staticmethod
+    def generate_random_string(length):
+        import secrets
+        import string
+        alphabet = string.ascii_letters + string.digits
+        return ''.join(secrets.choice(alphabet) for _ in range(length))
     @staticmethod
     def validate_email(email):
         """Basic email validation"""

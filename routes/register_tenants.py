@@ -65,9 +65,16 @@ def create_registered_tenant():
                         <p><strong>Tenant ID:</strong> {result['tenant_id']}</p>
                     </div>
                     
+                    <div style="background-color: #e7f3ff; padding: 20px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #007bff;">
+                        <h3 style="margin-top: 0; color: #007bff;">Access Your Tenant Portal</h3>
+                        <p>Click one of the links below to access your tenant dashboard:</p>
+                        <p><strong>Production:</strong> <a href="https://the-crm-ai.vercel.app/tenants-login">https://the-crm-ai.vercel.app/tenants-login</a></p>
+                        <p><strong>Local Development:</strong> <a href="http://localhost:3000/tenants-login">http://localhost:3000/tenants-login</a></p>
+                    </div>
+                    
                     <p><strong>Important:</strong> Please keep these credentials safe and secure. You will need them to access your account.</p>
                     
-                    <p>You can now log in to your account using these credentials.</p>
+                    <p>Use your <strong>Tenant ID</strong> and <strong>Password</strong> to login to your tenant portal.</p>
                     
                     <p>If you have any questions or need assistance, please don't hesitate to contact our support team.</p>
                     
@@ -101,31 +108,80 @@ def create_registered_tenant():
         current_app.logger.error(f"Create registered tenant error: {str(e)}")
         return jsonify({'error': 'Internal server error'}), 500
 
+# @register_tenants_bp.route('', methods=['GET'])
+# @token_required
+# def get_registered_tenants():
+#     """Get all registered tenants created by current admin"""
+#     try:
+#         # Get pagination parameters
+#         page = int(request.args.get('page', 1))
+#         limit = int(request.args.get('limit', 10))
+#         skip = (page - 1) * limit
+        
+#         # Get admin user ID from token
+#         admin_user_id = request.current_user['_id']
+        
+#         # Get registered tenants
+#         tenants = RegisteredTenantModel.get_tenants_by_admin(admin_user_id, skip, limit)
+        
+#         # Remove password from response for security
+#         for tenant in tenants:
+#             tenant.pop('password', None)
+        
+#         return jsonify({
+#             'tenants': tenants,
+#             'page': page,
+#             'limit': limit,
+#             'total': len(tenants)
+#         }), 200
+        
+#     except Exception as e:
+#         current_app.logger.error(f"Get registered tenants error: {str(e)}")
+#         return jsonify({'error': 'Internal server error'}), 500
+
 @register_tenants_bp.route('', methods=['GET'])
 @token_required
 def get_registered_tenants():
-    """Get all registered tenants created by current admin"""
+    """Get all registered tenants (modified to show all tenants in collection)"""
     try:
         # Get pagination parameters
         page = int(request.args.get('page', 1))
         limit = int(request.args.get('limit', 10))
         skip = (page - 1) * limit
         
-        # Get admin user ID from token
-        admin_user_id = request.current_user['_id']
+        # Get ALL registered tenants from collection (removed admin filtering)
+        from models import mongo
         
-        # Get registered tenants
-        tenants = RegisteredTenantModel.get_tenants_by_admin(admin_user_id, skip, limit)
+        # Get total count for pagination
+        total_count = mongo.db.registered_tenants.count_documents({})
         
-        # Remove password from response for security
-        for tenant in tenants:
+        # Get tenants with pagination
+        tenants_cursor = mongo.db.registered_tenants.find().skip(skip).limit(limit).sort('created_at', -1)
+        tenants = []
+        
+        for tenant in tenants_cursor:
+            # Convert ObjectId to string for JSON serialization
+            tenant['_id'] = str(tenant['_id'])
+            tenant['created_by'] = str(tenant['created_by'])
+            
+            # Remove password from response for security
             tenant.pop('password', None)
+            
+            # Convert datetime to ISO format string
+            if 'created_at' in tenant:
+                tenant['created_at'] = tenant['created_at'].isoformat()
+            if 'updated_at' in tenant:
+                tenant['updated_at'] = tenant['updated_at'].isoformat()
+            if 'last_login' in tenant:
+                tenant['last_login'] = tenant['last_login'].isoformat()
+            
+            tenants.append(tenant)
         
         return jsonify({
             'tenants': tenants,
             'page': page,
             'limit': limit,
-            'total': len(tenants)
+            'total': total_count
         }), 200
         
     except Exception as e:
