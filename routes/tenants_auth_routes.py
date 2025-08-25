@@ -5,10 +5,12 @@ from flask import Blueprint, request, jsonify, current_app
 from models import RegisteredTenantModel
 from utils.auth import AuthUtils
 from bson import ObjectId
-from datetime import datetime
+from datetime import datetime, timedelta   # ✅ also fixes step 3
 import jwt
 import logging
+from models import mongo
 
+# now = datetime.utcnow()
 # Create blueprint
 tenant_auth_bp = Blueprint('tenant_auth', __name__, url_prefix='/api/tenant-auth')
 
@@ -70,9 +72,44 @@ def tenant_login():
             return jsonify({'error': 'Tenant not found', 'success': False}), 404
         
         # Check if tenant is active
+        # if tenant.get('status') != 'active':
+        #     return jsonify({'error': 'Tenant account is not active', 'success': False}), 403
+        now = datetime.utcnow()
+
+        now = datetime.utcnow()
+
+# ✅ If suspended/blocked, deny BEFORE touching last_login
+        if tenant.get('status') in ('suspended', 'blocked'):
+            return jsonify({'error': 'Tenant account is not permitted to login', 'success': False}), 403
+
+        # ✅ First login (inactive/pending/etc.): auto-activate and set last_login
         if tenant.get('status') != 'active':
-            return jsonify({'error': 'Tenant account is not active', 'success': False}), 403
-        
+            mongo.db.registered_tenants.update_one(
+                {'tenant_id': tenant_id},
+                {
+                    '$set': {
+                        'status': 'active',
+                        'activated_at': tenant.get('activated_at') or now,
+                        'last_login': now,
+                        'updated_at': now,
+                    },
+                    '$inc': {'login_count': 1}
+                }
+            )
+            tenant['status'] = 'active'
+        else:
+            # ✅ Already active: just bump last_login / updated_at, increment login_count
+            mongo.db.registered_tenants.update_one(
+                {'tenant_id': tenant_id},
+                {
+                    '$set': {
+                        'last_login': now,
+                        'updated_at': now,
+                    },
+                    '$inc': {'login_count': 1}
+                }
+            )
+
         # Generate JWT token for tenant
         token = generate_tenant_token(tenant_id, tenant['email'])
         
@@ -80,16 +117,16 @@ def tenant_login():
             return jsonify({'error': 'Failed to generate authentication token', 'success': False}), 500
         
         # Update last login time
-        from models import mongo
-        mongo.db.registered_tenants.update_one(
-            {'tenant_id': tenant_id},
-            {
-                '$set': {
-                    'last_login': datetime.utcnow(),
-                    'updated_at': datetime.utcnow()
-                }
-            }
-        )
+        now = datetime.utcnow()
+        # mongo.db.registered_tenants.update_one(
+        #     {'tenant_id': tenant_id},
+        #     {
+        #         '$set': {
+        #             'last_login': datetime.utcnow(),
+        #             'updated_at': datetime.utcnow()
+        #         }
+        #     }
+        # )
         
         return jsonify({
             'success': True,
@@ -100,7 +137,7 @@ def tenant_login():
                 'email': tenant['email'],
                 'name': tenant['name'],
                 'status': tenant['status'],
-                'role': tenant['role'],
+                'role': tenant.get('role', 'tenant'),
             }
         }), 200
         
@@ -243,13 +280,13 @@ def tenant_forgot_password():
             reset_token = AuthUtils.generate_random_string(32)
             
             # Store reset token in database with expiration
-            from models import mongo
+            now = datetime.utcnow()
             mongo.db.registered_tenants.update_one(
                 {'tenant_id': tenant_id},
                 {
                     '$set': {
                         'reset_token': reset_token,
-                        'reset_token_expires': datetime.utcnow() + datetime.timedelta(hours=1),
+                        'reset_token_expires': datetime.utcnow() + timedelta(hours=1),
                         'updated_at': datetime.utcnow()
                     }
                 }
