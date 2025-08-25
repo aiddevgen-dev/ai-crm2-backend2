@@ -5,7 +5,7 @@ test123-45
 """
 import os
 import logging
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 from config import config
 from models import mongo, bcrypt
@@ -36,11 +36,19 @@ def create_app(config_name=None):
 
     
     # Initialize CORS
-    CORS(app, 
-         origins=['http://localhost:3000', 'http://127.0.0.1:3000', 'https://the-crm-ai.vercel.app' ], 
-         supports_credentials=True,
-         allow_headers=['Content-Type', 'Authorization'],
-         methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'])
+    # Initialize CORS (echoes the exact Origin, required for credentials)
+    ALLOWED_ORIGINS = [
+        "https://the-crm-ai.vercel.app",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ]
+
+    CORS(
+        app,
+        resources={r"/*": {"origins": ALLOWED_ORIGINS}},
+        supports_credentials=True
+    )
+
     
     # Register blueprints
     app.register_blueprint(auth_bp)
@@ -54,6 +62,23 @@ def create_app(config_name=None):
     
     # Setup logging
     setup_logging(app)
+        # --- Force CORS headers for all responses ---
+    @app.after_request
+    def add_cors_headers(resp):
+        origin = request.headers.get("Origin")
+        if origin in ALLOWED_ORIGINS:
+            resp.headers["Access-Control-Allow-Origin"] = origin
+            resp.headers["Vary"] = "Origin"
+            resp.headers["Access-Control-Allow-Credentials"] = "true"
+            resp.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+            resp.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+        return resp
+
+    @app.before_request
+    def handle_preflight():
+        if request.method == "OPTIONS":
+            return ("", 204)
+
     
     # Create database indexes
     create_indexes(app)
