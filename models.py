@@ -15,7 +15,7 @@ class RegisteredTenantModel:
     """Model for handling registered tenants by admin"""
     
     @staticmethod
-    def create_registered_tenant(email, password,name,admin_user_id):
+    def create_registered_tenant(email, password,name,admin_user_id, role):
         """Create a new registered tenant"""
         # Check if tenant already exists
         if RegisteredTenantModel.get_tenant_by_email(email):
@@ -34,6 +34,7 @@ class RegisteredTenantModel:
             'tenant_id': tenant_id,
             'created_by': ObjectId(admin_user_id),
             'status': 'active',
+            'role'  : role, 
             'created_at': datetime.utcnow(),
             'updated_at': datetime.utcnow()
         }
@@ -111,7 +112,7 @@ class UserModel:
     """Model for handling user operations"""
     
     @staticmethod
-    def create_user(email, password, tenant_id):
+    def create_user(email, password, tenant_id, role):
         """Create a new user"""
         # Check if user already exists
         if UserModel.get_user_by_email(email):
@@ -125,6 +126,7 @@ class UserModel:
             'tenant_id': ObjectId(tenant_id),
             'created_at': datetime.utcnow(),
             'updated_at': datetime.utcnow(),
+            'role' : role,
             'status': 'active',
             'reset_token': None,
             'reset_token_expires': None

@@ -193,7 +193,7 @@ def register():
             return jsonify({'error': 'Failed to create tenant'}), 500
         
         # Create new user
-        user_id = UserModel.create_user(email, password, tenant_id)
+        user_id = UserModel.create_user(email, password, tenant_id, 'admin')
         if not user_id:
             return jsonify({'error': 'Failed to create user'}), 500
         
@@ -245,7 +245,8 @@ def login():
             'user': {
                 'id': str(user['_id']),
                 'email': user['email'],
-                'tenant_id': str(user['tenant_id'])
+                'tenant_id': str(user['tenant_id']),
+                'role': user['role']
             }
         }), 200
         

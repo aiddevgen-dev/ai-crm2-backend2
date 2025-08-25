@@ -16,6 +16,7 @@ class AuthUtils:
         payload = {
             'user_id': str(user_id),
             'tenant_id': str(tenant_id),
+            'role': 'admin',  # ADD THIS LINE
             'exp': datetime.utcnow() + timedelta(hours=current_app.config['JWT_EXPIRATION_HOURS']),
             'iat': datetime.utcnow()
         }

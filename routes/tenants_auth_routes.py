@@ -19,9 +19,10 @@ def generate_tenant_token(tenant_id, tenant_email):
         from datetime import datetime, timedelta
         
         payload = {
-    'user_id': tenant_id,  # Change this: use tenant_id as user_id
-    'tenant_id': tenant_id,  # Keep this
+    'user_id': tenant_id,
+    'tenant_id': tenant_id,
     'tenant_email': tenant_email,
+    'role': 'tenant',  # ADD THIS LINE
     'exp': datetime.utcnow() + timedelta(hours=current_app.config.get('JWT_EXPIRATION_HOURS', 24)),
     'iat': datetime.utcnow(),
     'type': 'tenant_access'
@@ -94,11 +95,12 @@ def tenant_login():
             'success': True,
             'message': 'Login successful',
             'token': token,
-            'tenant': {
+            'user': {
                 'tenant_id': tenant['tenant_id'],
                 'email': tenant['email'],
                 'name': tenant['name'],
-                'status': tenant['status']
+                'status': tenant['status'],
+                'role': tenant['role'],
             }
         }), 200
         
@@ -201,8 +203,9 @@ def get_tenant_profile():
             return jsonify({
                 'tenant': {
                     'tenant_id': tenant['tenant_id'],
-                    'email': tenant['email'],
+                    'email': tenant['email'],   
                     'name': tenant['name'],
+                    'role': tenant['role'],
                     'status': tenant['status'],
                     'created_at': tenant['created_at'].isoformat(),
                     'last_login': tenant.get('last_login').isoformat() if tenant.get('last_login') else None
