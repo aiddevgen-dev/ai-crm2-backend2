@@ -210,6 +210,19 @@ class UserModel:
         return True
     
     @staticmethod
+    def remove_fields(user_id, fields):
+        """Remove specific fields from user document"""
+        try:
+            unset_data = {field: "" for field in fields}
+            result = mongo.db.users.update_one(
+                {'_id': ObjectId(user_id)},
+                {'$unset': unset_data}
+            )
+            return result.modified_count > 0
+        except Exception as e:
+            return False
+
+    @staticmethod
     def update_user(user_id, update_data):
         """Update user data"""
         try:

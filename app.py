@@ -18,6 +18,7 @@ from routes.knowledge_routes import knowledge_bp
 from routes.register_tenants import register_tenants_bp
 from routes.tenants_auth_routes import tenant_auth_bp
 from flask_mail import Mail 
+from authlib.integrations.flask_client import OAuth
 mail = Mail()
 
 def create_app(config_name=None):
@@ -29,6 +30,10 @@ def create_app(config_name=None):
     
     # Load configuration
     app.config.from_object(config[config_name])
+    # Add Google OAuth configuration
+    app.config['GOOGLE_CLIENT_ID'] = os.getenv('GOOGLE_CLIENT_ID')
+    app.config['GOOGLE_CLIENT_SECRET'] = os.getenv('GOOGLE_CLIENT_SECRET')
+    app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key')
     
     # Initialize extensions
     mongo.init_app(app)
@@ -86,7 +91,8 @@ def create_app(config_name=None):
     # Error handlers
     setup_error_handlers(app)
     mail.init_app(app)
-    
+    # Initialize OAuth
+    oauth = create_oauth(app)
     # Health check route
     @app.route('/health', methods=['GET'])
     def health_check():
@@ -183,7 +189,32 @@ def setup_error_handlers(app):
     @app.errorhandler(500)
     def internal_error(error):
         return jsonify({'error': 'Internal server error'}), 500
+    
 
+def create_oauth(app):
+    """Initialize OAuth for Google Calendar integration"""
+    oauth = OAuth(app)
+    app.oauth = oauth
+    
+    oauth.register(
+        name='google_calendar',
+        client_id=app.config.get('GOOGLE_CLIENT_ID'),
+        client_secret=app.config.get('GOOGLE_CLIENT_SECRET'),
+        access_token_url='https://oauth2.googleapis.com/token',
+        access_token_params=None,
+        authorize_url='https://accounts.google.com/o/oauth2/v2/auth',
+        authorize_params=None,
+        api_base_url='https://www.googleapis.com/calendar/v3/',
+        server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
+        client_kwargs={
+            'scope': 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/userinfo.email',
+            'access_type': 'offline',
+            'prompt': 'consent',
+            'include_granted_scopes': 'true'
+        }
+    )
+    
+    return oauth
 # Create app instance
 app = create_app()
 
