@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from functools import wraps
 from flask import current_app, request, jsonify
 from models import UserModel
-
+from utils.utils import AuthUtils 
 class AuthUtils:
     """Utility class for authentication operations"""
     
@@ -92,6 +92,43 @@ def token_required(f):
         # Add user info to request context
         request.current_user = current_user
         request.current_tenant_id = payload['tenant_id']
+        
+        return f(*args, **kwargs)
+    
+    return decorated
+
+# In utils/auth.py, ADD this new decorator function
+
+
+
+# ... your existing token_required function remains untouched ...
+
+def tenant_token_required(f):
+    """Decorator to require a JWT token with a 'tenant' role"""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = None
+        
+        if 'Authorization' in request.headers:
+            auth_header = request.headers['Authorization']
+            try:
+                token = auth_header.split(" ")[1]
+            except IndexError:
+                return jsonify({'message': 'Invalid token format'}), 401
+        
+        if not token:
+            return jsonify({'message': 'Token is missing'}), 401
+        
+        payload = AuthUtils.decode_token(token)
+        if not payload:
+            return jsonify({'message': 'Token is invalid or expired'}), 401
+
+        # SECURITY CHECK: Ensure the token is for a tenant
+        if payload.get('role') != 'tenant':
+            return jsonify({'message': 'Access denied: Tenant role required'}), 401
+        
+        # Attach the entire tenant payload to the request for use in the route
+        request.current_tenant = payload
         
         return f(*args, **kwargs)
     

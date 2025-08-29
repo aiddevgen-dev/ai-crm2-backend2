@@ -20,25 +20,6 @@ from datetime import datetime, timedelta
 import secrets
 # Create blueprint
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
-# oauth = OAuth()
-# Configure Google Calendar OAuth
-# oauth.register(
-#     name='google_calendar',
-#     client_id=current_app.config.get('GOOGLE_CLIENT_ID'),
-#     client_secret=current_app.config.get('GOOGLE_CLIENT_SECRET'),
-#     access_token_url='https://oauth2.googleapis.com/token',
-#     access_token_params=None,
-#     authorize_url='https://accounts.google.com/o/oauth2/v2/auth',
-#     authorize_params=None,
-#     api_base_url='https://www.googleapis.com/calendar/v3/',
-#     server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
-#     client_kwargs={
-#         'scope': 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/userinfo.email',
-#         'access_type': 'offline',
-#         'prompt': 'consent',
-#         'include_granted_scopes': 'true'
-#     }
-# )
 # google calendar integration:
 @auth_bp.route('/google/calendar/integrate', methods=['GET'])
 def google_calendar_integrate():

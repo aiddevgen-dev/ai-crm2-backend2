@@ -17,8 +17,16 @@ from routes.recording_routes import recording_bp
 from routes.knowledge_routes import knowledge_bp
 from routes.register_tenants import register_tenants_bp
 from routes.tenants_auth_routes import tenant_auth_bp
+from routes.telnyx_routes import telnyx_bp
+from routes.tenant_user_routes import tenant_user_bp
+from routes.agent_routes import agents_bp
+# Add these imports after your existing route imports
+from webhook.pipecat import create_pipecat_webhook_bp
+from webhook.telnyx import create_telnyx_webhook_bp
+from webhook.tools_webhook import create_tools_webhook_bp
 from flask_mail import Mail 
 from authlib.integrations.flask_client import OAuth
+
 mail = Mail()
 
 def create_app(config_name=None):
@@ -54,7 +62,9 @@ def create_app(config_name=None):
         supports_credentials=True
     )
 
-    
+    pipecat_webhook_bp, pipecat_api_bp = create_pipecat_webhook_bp()
+    telnyx_webhook_bp, telnyx_api_bp = create_telnyx_webhook_bp()
+    tools_bp = create_tools_webhook_bp()  # Add this line
     # Register blueprints
     app.register_blueprint(auth_bp)
     app.register_blueprint(campaign_bp)
@@ -64,7 +74,14 @@ def create_app(config_name=None):
     app.register_blueprint(knowledge_bp)
     app.register_blueprint(register_tenants_bp)
     app.register_blueprint(tenant_auth_bp)
-    
+    app.register_blueprint(telnyx_bp)
+    app.register_blueprint(tenant_user_bp)
+    app.register_blueprint(pipecat_webhook_bp)
+    app.register_blueprint(pipecat_api_bp)
+    app.register_blueprint(telnyx_webhook_bp) 
+    app.register_blueprint(telnyx_api_bp)
+    app.register_blueprint(tools_bp) 
+    app.register_blueprint(agents_bp)
     # Setup logging
     setup_logging(app)
         # --- Force CORS headers for all responses ---
